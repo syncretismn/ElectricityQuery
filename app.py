@@ -2,11 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import json
 import os
 import datetime
+import pandas as pd
 
 app = Flask(__name__, template_folder="templates")
 app.secret_key = "super_secret_key"
 
-ELECTRICITY_RECORD_FILE = "electricity_record.json"
+ELECTRICITY_RECORD_FILE = "electricity_record.json"  
 LOG_FILE = "logs.txt"
 
 # 全局数据存储
@@ -79,52 +80,103 @@ def register():
 
     return render_template("register.html")
 
-# **🔹 更新 stop_server 状态**
+
+# **✅ 服务器状态 API**
+@app.route("/stop_server", methods=["GET"])
+def stop_server_status():
+    """返回服务器当前状态"""
+    return jsonify({"stop_server": stop_server})
+
+@app.route("/stop_server/set", methods=["POST"])
+def set_stop_server():
+    """手动设置服务器状态"""
+    global stop_server
+    data = request.get_json()
+    if "stop_server" in data:
+        stop_server = bool(data["stop_server"])
+        if stop_server:
+            backup_and_clear_data()
+            message = "Server stopped and data exported."
+        else:
+            message = "Server restarted."
+        return jsonify({"message": message, "stop_server": stop_server})
+    return jsonify({"error": "Invalid request."}), 400
+
+# **🔹 更新服务器状态（自动模式）**
 def update_server_status():
     global stop_server
     current_time = datetime.datetime.now()
-    if 0 <= current_time.hour < 1:
-        stop_server = True  # **00:00 - 01:00 关闭 API**
-    else:
-        stop_server = False  # **01:00 - 23:00 API 正常工作**
+    
+    if 0 <= current_time.hour < 1:  # **00:00 - 01:00 触发自动停止**
+        if not stop_server:
+            stop_server = True
+            backup_and_clear_data()
+    elif current_time.hour >= 1 and stop_server:  # **01:00 恢复 API**
+        stop_server = False
+
+# **✅ 备份并清空数据**
+def backup_and_clear_data():
+    global user_data
+
+    if not user_data:  # **如果没有数据，跳过备份**
+        return
+
+    # **🔹 读取已有数据**
+    existing_data = {}
+    if os.path.exists(ELECTRICITY_RECORD_FILE):
+        with open(ELECTRICITY_RECORD_FILE, "r") as f:
+            try:
+                existing_data = json.load(f)
+            except json.JSONDecodeError:
+                existing_data = {}
+
+    # **🔹 追加新的 `meter_reading` 数据**
+    for meter_id, meter_info in user_data.items():
+        if meter_id not in existing_data:
+            existing_data[meter_id] = meter_info
+        else:
+            existing_data[meter_id]["meter_readings"].extend(meter_info["meter_readings"])
+
+    # **🔹 保存数据**
+    with open(ELECTRICITY_RECORD_FILE, "w") as f:
+        json.dump(existing_data, f, indent=4)
+
+    log_action(f"📁 Data appended to {ELECTRICITY_RECORD_FILE} and memory cleared.")
+
+    # **🔹 清空 `user_data`**
+    user_data.clear()
 
 # **✅ 录入 meter_reading（手动 or CSV）**
 @app.route("/reading", methods=["GET", "POST"])
 def reading():
-    update_server_status()  # **更新 stop_server 状态**
+    update_server_status()  # **更新 `stop_server` 状态**
     
     if request.method == "POST":
-        # **🔹 检查服务器是否在维护**
         if stop_server:
-            flash("⚠️ Server maintenance! No updates allowed from 00:00 to 01:00.", "error")
+            flash("⚠️ Server maintenance! No updates allowed.", "error")
             return redirect(url_for("reading"))
 
-        # **🔹 处理手动输入**
         if "meter_id" in request.form and "meter_value" in request.form and "update_time" in request.form:
-            meter_id = request.form.get("meter_id")
+            meter_id = request.form.get("meter_id").strip()
             meter_value = request.form.get("meter_value")
             update_time = request.form.get("update_time")
 
-            # **⚠️ 处理错误**
             if not meter_id or not meter_value or not update_time:
                 flash("❌ Please enter all fields!", "error")
                 return redirect(url_for("reading"))
 
-            # **存入数据库**
             save_meter_reading(meter_id, meter_value, update_time)
 
-        # **🔹 处理 CSV 上传**
         if "file" in request.files:
             file = request.files["file"]
             if file.filename.endswith(".csv"):
-                df = pd.read_csv(file)
-                
-                # **⚠️ 确保 CSV 结构正确**
+                df = pd.read_csv(file, dtype={"meter_id": str})
+
                 if set(["meter_id", "electricity", "update_time"]).issubset(df.columns):
                     for _, row in df.iterrows():
-                        save_meter_reading(row["meter_id"], row["electricity"], row["update_time"])
+                        save_meter_reading(row["meter_id"].strip(), row["electricity"], row["update_time"])
                 else:
-                    flash("❌ CSV format incorrect! Columns should be: meter_id, electricity, update_time.", "error")
+                    flash("❌ CSV format incorrect!", "error")
                     return redirect(url_for("reading"))
 
         flash("✅ Meter readings recorded successfully!", "success")
@@ -135,20 +187,17 @@ def reading():
 # **✅ 录入 meter_reading 数据**
 def save_meter_reading(meter_id, meter_value, update_time):
     global user_data
+    meter_id = str(meter_id).strip()
     meter_value = float(meter_value)
 
-    # **检查 Meter ID 是否注册**
     if meter_id not in user_data:
         flash(f"❌ Meter ID {meter_id} not found. Please register first.", "error")
         return
 
-    # **检查时间是否在维护期间**
-    reading_time = datetime.datetime.strptime(update_time, "%Y-%m-%d %H:%M:%S")
-    if 0 <= reading_time.hour < 1:
-        flash(f"⚠️ Reading time {update_time} is in maintenance window (00:00 - 01:00). Try again later.", "error")
+    if stop_server:
+        flash(f"⚠️ Cannot record readings during maintenance mode.", "error")
         return
 
-    # **存入数据库**
     if "meter_readings" not in user_data[meter_id]:
         user_data[meter_id]["meter_readings"] = []
 
@@ -159,13 +208,6 @@ def save_meter_reading(meter_id, meter_value, update_time):
 
     save_user_data()
     log_action(f"Meter reading recorded: {meter_id}, {meter_value} kWh at {update_time}")
-
-# **✅ 停止服务器 API**
-@app.route("/stop_server", methods=["GET"])
-def stop_server_api():
-    update_server_status()  # **更新服务器状态**
-    return jsonify({"stop_server": stop_server})
-
 
 
 # ✅ 6. 查询用电数据

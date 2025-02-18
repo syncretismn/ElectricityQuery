@@ -35,4 +35,21 @@
         <input type="file" name="file" accept=".csv" required><br>
         <button type="submit">Upload CSV</button>
     </form>
+
+    <script>
+        async function checkServerStatus() {
+            try {
+                const response = await fetch("{{ url_for('stop_server_status') }}");
+                const data = await response.json();
+                document.getElementById("api-status").innerText = data.stop_server ? "❌ API Offline (00:00 - 01:00)" : "✅ API Online";
+                document.getElementById("api-status").style.color = data.stop_server ? "red" : "green";
+            } catch (error) {
+                document.getElementById("api-status").innerText = "⚠️ Error fetching API status";
+                document.getElementById("api-status").style.color = "orange";
+            }
+        }
+
+        setInterval(checkServerStatus, 5000);
+        checkServerStatus();
+    </script>
 {% endblock %}
