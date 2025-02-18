@@ -7,7 +7,7 @@ import pandas as pd
 app = Flask(__name__, template_folder="templates")
 app.secret_key = "super_secret_key"
 
-ELECTRICITY_RECORD_FILE = "electricity_record.json"  
+ELECTRICITY_MEMORY_FILE = "electricity_memory.json"  # 原 "electricity_record.json" 
 LOG_FILE = "logs.txt"
 
 # 全局数据存储
@@ -16,8 +16,8 @@ user_data = {}
 # ✅ 1. 加载数据
 def load_user_data():
     global user_data
-    if os.path.exists(ELECTRICITY_RECORD_FILE):
-        with open(ELECTRICITY_RECORD_FILE, "r") as f:
+    if os.path.exists(ELECTRICITY_MEMORY_FILE):
+        with open(ELECTRICITY_MEMORY_FILE, "r") as f:
             try:
                 user_data = json.load(f)
             except json.JSONDecodeError:
@@ -27,7 +27,7 @@ def load_user_data():
 
 def save_user_data():
     global user_data
-    with open(ELECTRICITY_RECORD_FILE, "w") as f:
+    with open(ELECTRICITY_MEMORY_FILE, "w") as f:
         json.dump(user_data, f, indent=4)
 
 # ✅ 2. 记录日志
@@ -69,8 +69,7 @@ def register():
             "dwelling_type": dwelling_type,
             "region": region,
             "area": area,
-            "meter_readings": [],
-            "next_meter_update_time": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            "meter_readings": []
         }
 
         save_user_data()
@@ -80,29 +79,50 @@ def register():
 
     return render_template("register.html")
 
-
+BACKUP_FILE = "backup.json"  # 原 "backup_20250218.json"
 def backup_and_clear_data():
-    """备份今日 meter_reading 数据并清空 memory"""
+    """备份 meter_reading 数据，并保留用户信息，追加至 backup.json"""
     global user_data
     if not user_data:
         return
-    
-    backup_filename = f"backup_{datetime.datetime.now().strftime('%Y%m%d')}.json"
-    backup_data = {}
-    
+
+    # 读取现有 backup.json 数据（如果存在）
+    if os.path.exists(BACKUP_FILE):
+        with open(BACKUP_FILE, "r") as f:
+            try:
+                backup_data = json.load(f)
+            except json.JSONDecodeError:
+                backup_data = {}
+    else:
+        backup_data = {}
+
+    # 遍历当前 user_data，追加 meter_readings 数据
     for meter_id, meter_info in user_data.items():
+        if meter_id not in backup_data:
+            # 先存入用户基本信息（仅首次）
+            backup_data[meter_id] = {
+                "username": meter_info["username"],
+                "dwelling_type": meter_info["dwelling_type"],
+                "region": meter_info["region"],
+                "area": meter_info["area"],
+                "meter_readings": []
+            }
+
+        # 追加新的 meter_readings
         if "meter_readings" in meter_info and meter_info["meter_readings"]:
-            backup_data[meter_id] = meter_info["meter_readings"]
-    
-    with open(backup_filename, "w") as f:
+            backup_data[meter_id]["meter_readings"].extend(meter_info["meter_readings"])
+
+    # 将更新后的数据写入 backup.json
+    with open(BACKUP_FILE, "w") as f:
         json.dump(backup_data, f, indent=4)
-    
-    print(f"📁 Data backed up to {backup_filename} and memory cleared.")
-    
-    # 清空 user_data
+
+    print(f"📁 Data appended to {BACKUP_FILE} and memory cleared.")
+
+    # 清空 meter_readings
     for meter_id in user_data:
         user_data[meter_id]["meter_readings"] = []
     save_user_data()
+
 
 # ✅ 服务器状态页面
 @app.route("/stop_server", methods=["GET"])

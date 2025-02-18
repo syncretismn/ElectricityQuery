@@ -1,6 +1,6 @@
 {
     "12345": {
-        "username": "1",
+        "username": "12345",
         "dwelling_type": "1-room / 2-room",
         "region": "Central Region",
         "area": "1",
@@ -276,8 +276,11 @@
             {
                 "time": "2025/2/19 11:30",
                 "reading": 45.5
+            },
+            {
+                "time": "2025-02-20 12:02:56",
+                "reading": 1.1
             }
-        ],
-        "next_meter_update_time": "2025-02-18 17:49:40"
+        ]
     }
 }

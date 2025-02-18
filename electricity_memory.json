@@ -1,0 +1,9 @@
+{
+    "12345": {
+        "username": "12345",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "1",
+        "meter_readings": []
+    }
+}
