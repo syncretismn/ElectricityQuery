@@ -1,0 +1,128 @@
+{
+    "2": {
+        "username": "WU0009YU",
+        "meter_id": "2",
+        "dwelling_type": "1-room / 2-room",
+        "region": "West Region",
+        "area": "a",
+        "meter_readings": [
+            {
+                "time": "2025-02-18 13:25:50",
+                "reading": 22.0
+            },
+            {
+                "time": "2025-02-18 13:25:56",
+                "reading": 22.0
+            },
+            {
+                "time": "2025-02-18 13:26:04",
+                "reading": 22.0
+            },
+            {
+                "time": "2025-02-18 13:26:08",
+                "reading": 22.0
+            },
+            {
+                "time": "2025-02-18 13:26:15",
+                "reading": 22.0
+            },
+            {
+                "time": "2025-02-18 13:26:31",
+                "reading": 22.0
+            }
+        ],
+        "next_meter_update_time": "2025-02-18 13:26:31"
+    },
+    "3": {
+        "username": "WU0009YU",
+        "meter_id": "3",
+        "dwelling_type": "1-room / 2-room",
+        "region": "West Region",
+        "area": "a",
+        "meter_readings": []
+    },
+    "4": {
+        "username": "WU0009YU",
+        "meter_id": "4",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "a",
+        "meter_readings": [
+            {
+                "time": "2025-02-18 13:31:25",
+                "reading": 2.0
+            },
+            {
+                "time": "2025-02-18 13:31:29",
+                "reading": 6.0
+            },
+            {
+                "time": "2025-02-18 13:31:35",
+                "reading": 6.0
+            }
+        ]
+    },
+    "6": {
+        "username": "WU0009YU",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "a",
+        "meter_readings": [],
+        "next_meter_update_time": "2025-02-18 13:40:46"
+    },
+    "1": {
+        "username": "1",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "1",
+        "meter_readings": [
+            {
+                "time": "2025-02-18 13:52:40",
+                "reading": 1.0
+            },
+            {
+                "time": "2025-02-18 12:02:56",
+                "reading": 10.0
+            }
+        ],
+        "next_meter_update_time": "2025-02-18 14:22:40"
+    },
+    "7": {
+        "username": "1",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "1",
+        "meter_readings": [
+            {
+                "time": "2025-02-18 14:18:52",
+                "reading": 1.0
+            },
+            {
+                "time": "2025-02-18 14:19:00",
+                "reading": 8.0
+            }
+        ],
+        "next_meter_update_time": "2025-02-18 14:49:00"
+    },
+    "9": {
+        "username": "1",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "1",
+        "meter_readings": [
+            {
+                "time": "2025-02-18 14:21:26",
+                "reading": 1.0
+            }
+        ],
+        "next_meter_update_time": "2025-02-18 14:51:26"
+    },
+    "10": {
+        "username": "1",
+        "dwelling_type": "1-room / 2-room",
+        "region": "Central Region",
+        "area": "1",
+        "meter_readings": [],
+        "next_meter_update_time": "2025-02-18 14:52:49"
+    }
+}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+    <h2>Main Page</h2>
+    <a href="{{ url_for('register') }}"><button>Register</button></a>
+    <a href="{{ url_for('reading') }}"><button>Meter Reading</button></a>
+    <a href="{{ url_for('query') }}"><button>Query Electricity Usage</button></a>
+    <a href="{{ url_for('history') }}"><button>Query History</button></a>
+{% endblock %}
+

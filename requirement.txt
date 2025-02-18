@@ -1,0 +1,4 @@
+Flask==2.2.3          # Flask 框架
+Flask-WTF==1.1.1      # 处理表单（如果前端使用 Flask-WTF）
+pandas==1.5.3         # 数据处理（查询和计算用电量）
+gunicorn==20.1.0      # 生产环境 WSGI 服务器（部署用，可选）

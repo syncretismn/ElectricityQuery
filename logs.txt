@@ -1,0 +1,14 @@
+2025-02-18 13:31:17 - User registered: WU0009YU, Meter ID: 4
+2025-02-18 13:31:25 - Meter reading recorded: 4, 2.0 kWh at 2025-02-18 13:31:25
+2025-02-18 13:31:29 - Meter reading recorded: 4, 6.0 kWh at 2025-02-18 13:31:29
+2025-02-18 13:31:35 - Meter reading recorded: 4, 6.0 kWh at 2025-02-18 13:31:35
+2025-02-18 13:40:46 - User registered: WU0009YU, Meter ID: 6
+2025-02-18 13:52:32 - User registered: 1, Meter ID: 1
+2025-02-18 13:52:40 - Meter reading recorded: 1, 1.0 kWh at 2025-02-18 13:52:40
+2025-02-18 14:18:47 - User registered: 1, Meter ID: 7
+2025-02-18 14:18:52 - Meter reading recorded: 7, 1.0 kWh at 2025-02-18 14:18:52
+2025-02-18 14:19:00 - Meter reading recorded: 7, 8.0 kWh at 2025-02-18 14:19:00
+2025-02-18 14:21:12 - User registered: 1, Meter ID: 9
+2025-02-18 14:21:26 - Meter reading recorded: 9, 1.0 kWh at 2025-02-18 14:21:26
+2025-02-18 14:52:49 - User registered: 1, Meter ID: 10
+2025-02-18 14:53:52 - Meter reading recorded: 1, 10.0 kWh at 2025-02-18 12:02:56
