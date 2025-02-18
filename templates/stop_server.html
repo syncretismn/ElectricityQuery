@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Control</title>
+    <script>
+        function toggleServer() {
+            fetch('/stop_server/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("server-status").innerText = data.stop_server ? "Stopped" : "Running";
+                document.getElementById("toggle-btn").innerText = data.stop_server ? "Restart Server" : "Stop Server";
+                alert(data.message);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Server Status</h1>
+    <p>Current Status: <strong id="server-status">{{ "Stopped" if stop_server else "Running" }}</strong></p>
+    <button id="toggle-btn" onclick="toggleServer()">
+        {{ "Restart Server" if stop_server else "Stop Server" }}
+    </button>
+</body>
+</html>

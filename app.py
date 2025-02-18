@@ -81,81 +81,59 @@ def register():
     return render_template("register.html")
 
 
-# **✅ 服务器状态 API**
-@app.route("/stop_server", methods=["GET"])
-def stop_server_status():
-    """返回服务器当前状态"""
-    return jsonify({"stop_server": stop_server})
-
-@app.route("/stop_server/set", methods=["POST"])
-def set_stop_server():
-    """手动设置服务器状态"""
-    global stop_server
-    data = request.get_json()
-    if "stop_server" in data:
-        stop_server = bool(data["stop_server"])
-        if stop_server:
-            backup_and_clear_data()
-            message = "Server stopped and data exported."
-        else:
-            message = "Server restarted."
-        return jsonify({"message": message, "stop_server": stop_server})
-    return jsonify({"error": "Invalid request."}), 400
-
-# **🔹 更新服务器状态（自动模式）**
-def update_server_status():
-    global stop_server
-    current_time = datetime.datetime.now()
-    
-    if 0 <= current_time.hour < 1:  # **00:00 - 01:00 触发自动停止**
-        if not stop_server:
-            stop_server = True
-            backup_and_clear_data()
-    elif current_time.hour >= 1 and stop_server:  # **01:00 恢复 API**
-        stop_server = False
-
-# **✅ 备份并清空数据**
 def backup_and_clear_data():
+    """备份今日 meter_reading 数据并清空 memory"""
     global user_data
-
-    if not user_data:  # **如果没有数据，跳过备份**
+    if not user_data:
         return
-
-    # **🔹 读取已有数据**
-    existing_data = {}
-    if os.path.exists(ELECTRICITY_RECORD_FILE):
-        with open(ELECTRICITY_RECORD_FILE, "r") as f:
-            try:
-                existing_data = json.load(f)
-            except json.JSONDecodeError:
-                existing_data = {}
-
-    # **🔹 追加新的 `meter_reading` 数据**
+    
+    backup_filename = f"backup_{datetime.datetime.now().strftime('%Y%m%d')}.json"
+    backup_data = {}
+    
     for meter_id, meter_info in user_data.items():
-        if meter_id not in existing_data:
-            existing_data[meter_id] = meter_info
-        else:
-            existing_data[meter_id]["meter_readings"].extend(meter_info["meter_readings"])
+        if "meter_readings" in meter_info and meter_info["meter_readings"]:
+            backup_data[meter_id] = meter_info["meter_readings"]
+    
+    with open(backup_filename, "w") as f:
+        json.dump(backup_data, f, indent=4)
+    
+    print(f"📁 Data backed up to {backup_filename} and memory cleared.")
+    
+    # 清空 user_data
+    for meter_id in user_data:
+        user_data[meter_id]["meter_readings"] = []
+    save_user_data()
 
-    # **🔹 保存数据**
-    with open(ELECTRICITY_RECORD_FILE, "w") as f:
-        json.dump(existing_data, f, indent=4)
+# ✅ 服务器状态页面
+@app.route("/stop_server", methods=["GET"])
+def stop_server_page():
+    return render_template("stop_server.html", stop_server=stop_server)
 
-    log_action(f"📁 Data appended to {ELECTRICITY_RECORD_FILE} and memory cleared.")
+# ✅ 切换 stop_server 状态
+@app.route("/stop_server/toggle", methods=["POST"])
+def toggle_stop_server():
+    global stop_server
+    stop_server = not stop_server  # 切换状态
+    
+    if stop_server:
+        backup_and_clear_data()
+        message = "Server stopped and data exported."
+    else:
+        message = "Server restarted."
+    
+    return jsonify({"stop_server": stop_server, "message": message})
 
-    # **🔹 清空 `user_data`**
-    user_data.clear()
-
-# **✅ 录入 meter_reading（手动 or CSV）**
+# ✅ 录入 meter_reading（手动 or CSV）
 @app.route("/reading", methods=["GET", "POST"])
 def reading():
-    update_server_status()  # **更新 `stop_server` 状态**
-    
     if request.method == "POST":
         if stop_server:
             flash("⚠️ Server maintenance! No updates allowed.", "error")
             return redirect(url_for("reading"))
 
+        success = False
+
+        # **手动录入**
         if "meter_id" in request.form and "meter_value" in request.form and "update_time" in request.form:
             meter_id = request.form.get("meter_id").strip()
             meter_value = request.form.get("meter_value")
@@ -165,8 +143,11 @@ def reading():
                 flash("❌ Please enter all fields!", "error")
                 return redirect(url_for("reading"))
 
-            save_meter_reading(meter_id, meter_value, update_time)
+            result = save_meter_reading(meter_id, meter_value, update_time)
+            flash(result["message"], result["status"])
+            success = result["status"] == "success"
 
+        # **CSV 文件批量导入**
         if "file" in request.files:
             file = request.files["file"]
             if file.filename.endswith(".csv"):
@@ -174,29 +155,36 @@ def reading():
 
                 if set(["meter_id", "electricity", "update_time"]).issubset(df.columns):
                     for _, row in df.iterrows():
-                        save_meter_reading(row["meter_id"].strip(), row["electricity"], row["update_time"])
+                        result = save_meter_reading(row["meter_id"].strip(), row["electricity"], row["update_time"])
+                        flash(result["message"], result["status"])
+                        if result["status"] == "success":
+                            success = True
                 else:
-                    flash("❌ CSV format incorrect!", "error")
-                    return redirect(url_for("reading"))
+                    flash("❌ CSV format incorrect! Columns should be: meter_id, electricity, update_time", "error")
 
-        flash("✅ Meter readings recorded successfully!", "success")
+        if success:
+            flash("✅ Meter readings recorded successfully!", "success")
+
         return redirect(url_for("reading"))
 
     return render_template("reading.html")
 
-# **✅ 录入 meter_reading 数据**
+# ✅ 录入 meter_reading 数据
 def save_meter_reading(meter_id, meter_value, update_time):
     global user_data
     meter_id = str(meter_id).strip()
-    meter_value = float(meter_value)
+    
+    # 确保 meter_value 是 float 类型
+    try:
+        meter_value = float(meter_value)
+    except ValueError:
+        return {"message": f"❌ Invalid meter reading value for {meter_id}.", "status": "error"}
 
     if meter_id not in user_data:
-        flash(f"❌ Meter ID {meter_id} not found. Please register first.", "error")
-        return
+        return {"message": f"❌ Meter ID {meter_id} not found. Please register first.", "status": "error"}
 
     if stop_server:
-        flash(f"⚠️ Cannot record readings during maintenance mode.", "error")
-        return
+        return {"message": f"⚠️ Cannot record readings during maintenance mode.", "status": "error"}
 
     if "meter_readings" not in user_data[meter_id]:
         user_data[meter_id]["meter_readings"] = []
@@ -208,6 +196,9 @@ def save_meter_reading(meter_id, meter_value, update_time):
 
     save_user_data()
     log_action(f"Meter reading recorded: {meter_id}, {meter_value} kWh at {update_time}")
+
+    return {"message": f"✅ Meter reading {meter_value} kWh recorded successfully at {update_time}.", "status": "success"}
+
 
 
 # ✅ 6. 查询用电数据
@@ -264,6 +255,12 @@ def history():
         query_result = f"✅ Daily usage calculated for {query_date}."
 
     return render_template("history.html", query_result=query_result)
+
+
+@app.route("/debug_memory", methods=["GET"])
+def debug_memory():
+    """手动查看当前 user_data 的内容"""
+    return jsonify(user_data)
 
 if __name__ == "__main__":
     app.run(debug=True)
